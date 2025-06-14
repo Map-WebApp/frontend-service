@@ -33,7 +33,13 @@ const Register = ({ open, onClose, onRegisterSuccess, isEmbedded = false, onSucc
 
         try {
             setError('');
-            await axios.post('/api/auth/register', { username, password });
+            console.log('Sending registration request to /api/auth/register');
+            console.log('Request payload:', { username, password: '***' });
+            
+            const response = await axios.post('/api/auth/register', { username, password });
+            
+            console.log('Registration successful:', response.data);
+            
             if (isEmbedded) {
                 onSuccess();
             } else {
@@ -41,6 +47,8 @@ const Register = ({ open, onClose, onRegisterSuccess, isEmbedded = false, onSucc
                 onRegisterSuccess();
             }
         } catch (err) {
+            console.error('Registration failed:', err);
+            console.error('Error response:', err.response);
             setError(err.response?.data?.message || 'Registration failed. Please try again.');
         }
     };

@@ -19,4 +19,4 @@ EXPOSE 5173
 
 # 7. Lệnh để khởi động server khi container chạy
 # Cờ --host đảm bảo server có thể được truy cập từ bên ngoài container
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["npm", "run", "dev", "--", "--host=0.0.0.0"]
