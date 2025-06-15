@@ -48,8 +48,12 @@ const Register = ({ open, onClose, onRegisterSuccess, isEmbedded = false, onSucc
             }
         } catch (err) {
             console.error('Registration failed:', err);
-            console.error('Error response:', err.response);
-            setError(err.response?.data?.message || 'Registration failed. Please try again.');
+            if (err.response) {
+                console.error('Error response:', err.response);
+                setError(err.response.data?.message || 'Registration failed. Please try again.');
+            } else {
+                setError('Registration failed. Please try again.');
+            }
         }
     };
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, Alert, Box, IconButton, InputAdornment } from '@mui/material';
 import useAuth from '../hooks/useAuth';
-import axios from 'axios';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
@@ -24,12 +23,13 @@ const Login = ({ open, onClose, isEmbedded = false, onSuccess = () => {} }) => {
 
         try {
             setError('');
-            const response = await axios.post('/api/auth/login', { username, password });
-            login(response.data.token);
-            if (isEmbedded) {
-                onSuccess();
-            } else {
-                onClose();
+            const success = await login(username, password);
+            if (success) {
+                if (isEmbedded) {
+                    onSuccess();
+                } else {
+                    onClose();
+                }
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
