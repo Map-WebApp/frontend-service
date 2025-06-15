@@ -11,12 +11,19 @@ COPY package.json package-lock.json* ./
 # 4. Cài đặt các gói phụ thuộc
 RUN npm install
 
-# 5. Sao chép toàn bộ mã nguồn còn lại của frontend
+# 5. Tạo file .env.local với các biến môi trường cần thiết
+RUN echo "VITE_AUTH_API_URL=http://auth-service:3007/api/auth" > .env
+RUN echo "VITE_USER_SERVICE_URL=http://user-service:8080/api/users" >> .env
+RUN echo "VITE_LOCATION_SERVICE_URL=http://location-service:3003" >> .env
+RUN echo "VITE_ROUTE_SERVICE_URL=http://route-service:3004" >> .env
+RUN echo "VITE_WEBSOCKET_SERVICE_URL=ws://websocket-service:3002" >> .env
+
+# 6. Sao chép toàn bộ mã nguồn còn lại của frontend
 COPY . .
 
-# 6. Mở cổng 5173 để Vite dev server có thể nhận kết nối
+# 7. Mở cổng 5173 để Vite dev server có thể nhận kết nối
 EXPOSE 5173
 
-# 7. Lệnh để khởi động server khi container chạy
+# 8. Lệnh để khởi động server khi container chạy
 # Cờ --host đảm bảo server có thể được truy cập từ bên ngoài container
 CMD ["npm", "run", "dev", "--", "--host=0.0.0.0"]
