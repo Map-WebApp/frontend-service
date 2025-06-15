@@ -66,6 +66,61 @@ a,
   border-radius: 12px !important;
 }
 
+/* Side panel styles */
+.side-panel-container {
+  min-width: 350px;
+  max-width: 400px;
+  height: 100%;
+  position: relative !important;
+  z-index: 1300 !important;
+  background-color: white;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  overflow: visible !important;
+  display: flex !important;
+  flex-direction: column;
+}
+
+.side-panel-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.side-panel-header {
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.close-button {
+  position: absolute !important;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+/* Force panel to display */
+[role="presentation"] > .MuiPaper-root {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Fix for panel animation */
+@media (max-width: 600px) {
+  .side-panel-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+}
+
 /* Utility classes */
 .text-ellipsis {
   white-space: nowrap;
@@ -95,4 +150,13 @@ a,
 
 .fade-in {
   animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Fix for panel staying open */
+.panel-wrapper {
+  display: flex !important;
+  flex-direction: row !important;
+  height: 100% !important;
+  width: auto !important;
+  min-width: 350px !important;
 } 

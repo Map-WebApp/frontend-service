@@ -7,7 +7,6 @@ const initialState = {
   selectedPlace: null,
   savedLocations: [],
   directions: null,
-  mapInstance: null,
 };
 
 export const mapSlice = createSlice({
@@ -38,9 +37,6 @@ export const mapSlice = createSlice({
     setDirections: (state, action) => {
       state.directions = action.payload;
     },
-    setMapInstance: (state, action) => {
-      state.mapInstance = action.payload;
-    },
   },
 });
 
@@ -53,7 +49,6 @@ export const {
   addSavedLocation,
   removeSavedLocation,
   setDirections,
-  setMapInstance
 } = mapSlice.actions;
 
 export default mapSlice.reducer; 

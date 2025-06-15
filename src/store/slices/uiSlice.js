@@ -3,7 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   drawerOpen: false,
   sidePanelOpen: false,
-  sidePanelTab: 'info', // 'info' | 'directions' | 'saved'
+  sidePanelTab: 0, // 0: info, 1: directions, 2: saved
   directionsExpanded: false,
   mapType: 'roadmap', // 'roadmap' | 'satellite' | 'hybrid' | 'terrain'
   showTraffic: false,
