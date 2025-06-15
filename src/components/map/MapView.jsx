@@ -101,6 +101,18 @@ const MapView = () => {
     gestureHandling: 'greedy',
   };
 
+  // Auto-pan and zoom when center or zoom changes
+  useEffect(() => {
+    if (mapRef.current) {
+      // Smoothly move to new center
+      mapRef.current.panTo(center);
+      // Update zoom level if needed
+      if (zoom !== mapRef.current.getZoom()) {
+        mapRef.current.setZoom(zoom);
+      }
+    }
+  }, [center, zoom]);
+
   // Hiển thị lỗi khi bị chặn bởi AdBlocker
   if (isBlocked) {
     return (

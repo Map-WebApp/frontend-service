@@ -44,13 +44,10 @@ const SearchBox = () => {
       const place = handlePlaceChanged();
       console.log("Place selected:", place);
       
-      if (!place) {
-        console.error("No place returned from autocomplete");
-        dispatch(addToast({
-          type: 'error',
-          message: 'Không thể lấy chi tiết địa điểm. Vui lòng thử lại.'
-        }));
-        setHasError(true);
+      // Nếu Autocomplete không trả về kết quả, thử Geocoder
+      if (!place || !place.geometry) {
+        console.warn("No geometry from Autocomplete, falling back to Geocoder");
+        handleManualSearch();
         return;
       }
       
