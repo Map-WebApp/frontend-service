@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { AppBar, Toolbar, Typography, Button, Box, IconButton, useMediaQuery, useTheme } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { AppBar, Toolbar, Typography, Button, Box, useMediaQuery, useTheme } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
 import { setIsMobileView } from './store/slices/uiSlice';
 import useAuth from './hooks/useAuth';
@@ -12,37 +12,26 @@ import Toast from './components/ui/Toast';
 function App() {
   const dispatch = useDispatch();
   const { user, logout } = useAuth();
+  const auth = useSelector(state => state.auth);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { isSidePanelOpen } = useSelector(state => state.ui);
   
-  // Cập nhật trạng thái responsive
   useEffect(() => {
     dispatch(setIsMobileView(isMobile));
   }, [isMobile, dispatch]);
-  
-  // Xử lý sự kiện resize cửa sổ
-  useEffect(() => {
-    const handleResize = () => {
-      dispatch(setIsMobileView(window.innerWidth < 768));
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [dispatch]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <AppBar position="static" elevation={0}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <AppBar position="static" elevation={1} sx={{ zIndex: 1301 }}>
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Maps WebApp
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
+            DevSecOps Maps
           </Typography>
-          {user ? (
+          {auth.user ? (
             <>
               <Typography sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
-                Xin chào, {user.username}
+                Xin chào, {auth.user.username || 'User'}
               </Typography>
               <Button color="inherit" onClick={logout}>
                 Đăng xuất
@@ -50,18 +39,31 @@ function App() {
             </>
           ) : (
             <>
-              <Button color="inherit">Đăng nhập</Button>
-              <Button color="inherit">Đăng ký</Button>
+              {/* Các nút Đăng nhập/Đăng ký sẽ được xử lý trong LandingPage */}
             </>
           )}
         </Toolbar>
       </AppBar>
       
-      {user ? (
-        <Box sx={{ flexGrow: 1, position: 'relative' }}>
-          <MapView />
-          <SearchBox />
+      {auth.user ? (
+        <Box sx={{ 
+          display: 'flex', 
+          flexGrow: 1,
+          position: 'relative',
+          overflow: 'hidden',
+          width: '100%',
+          height: 'calc(100vh - 64px)' // Trừ chiều cao của AppBar
+        }}>
           <SidePanel />
+          <Box sx={{ 
+            flexGrow: 1, 
+            position: 'relative',
+            width: isSidePanelOpen && !isMobile ? 'calc(100% - 350px)' : '100%',
+            transition: 'width 0.3s ease'
+          }}>
+            <MapView />
+            <SearchBox />
+          </Box>
           <Toast />
         </Box>
       ) : (
