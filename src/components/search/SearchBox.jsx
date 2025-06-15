@@ -1,248 +1,215 @@
-import React, { useState, useEffect } from 'react';
-import { Box, TextField, InputAdornment, IconButton, CircularProgress, Paper, List, ListItem, ListItemText, ListItemIcon, Typography, Divider, Fade } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, TextField, InputAdornment, IconButton, CircularProgress, Paper } from '@mui/material';
 import { Autocomplete } from '@react-google-maps/api';
 import SearchIcon from '@mui/icons-material/Search';
 import MicIcon from '@mui/icons-material/Mic';
 import CloseIcon from '@mui/icons-material/Close';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import HistoryIcon from '@mui/icons-material/History';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { addToast } from '../../store/slices/uiSlice';
 import useSearch from '../../hooks/map/useSearch';
 import useMapFunctions from '../../hooks/map/useMapFunctions';
 import { styled } from '@mui/material/styles';
 import { motion } from 'framer-motion';
+import { useGoogleMaps } from '../../context/GoogleMapsContext.jsx';
 
-// Styled components
-const SearchPaper = styled(Paper)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  borderRadius: 24,
-  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-  transition: 'box-shadow 0.3s ease',
-  '&:hover': {
-    boxShadow: '0 4px 15px rgba(0,0,0,0.15)',
-  },
-  padding: theme.spacing(0.5, 2),
-}));
-
-const StyledTextField = styled(TextField)({
+const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
+    borderRadius: 50, // Pill shape
+    backgroundColor: theme.palette.background.paper,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    transition: 'box-shadow 0.3s ease-in-out',
+    '&:hover': {
+      boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
+    },
     '& fieldset': {
       border: 'none',
     },
+    paddingLeft: theme.spacing(1), // Adjust padding for icon
   },
   '& .MuiInputBase-input': {
-    padding: '12px 0',
+    padding: '14px 0',
   }
-});
-
-const SuggestionsPaper = styled(Paper)(({ theme }) => ({
-  position: 'absolute',
-  width: '100%',
-  maxHeight: 350,
-  overflowY: 'auto',
-  top: '100%',
-  left: 0,
-  right: 0,
-  marginTop: theme.spacing(1),
-  zIndex: 1400,
-  borderRadius: 12,
-  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
 }));
 
-const MotionBox = styled(motion.div)({
-  width: '100%',
-});
-
 const SearchBox = () => {
-  const [focused, setFocused] = useState(false);
-  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
-  
-  const { searchText, autocomplete, onAutocompleteLoad, handleSearchTextChange, handlePlaceChanged, clearSearch } = useSearch();
+  const dispatch = useDispatch();
+  const { searchText, onAutocompleteLoad, handleSearchTextChange, handlePlaceChanged, clearSearch } = useSearch();
   const { handlePlaceSelect } = useMapFunctions();
-  
-  const { isSearching, searchSuggestions, recentSearches } = useSelector(state => state.search);
-  const { isMobileView } = useSelector(state => state.ui);
+  const { isLoaded } = useGoogleMaps();
+  const { isSearching } = useSelector(state => state.search);
+  const [hasError, setHasError] = useState(false);
 
-  // Xử lý khi chọn địa điểm từ autocomplete
   const onPlaceSelect = () => {
-    const place = handlePlaceChanged();
-    if (place) {
+    try {
+      const place = handlePlaceChanged();
+      console.log("Place selected:", place);
+      
+      if (!place) {
+        console.error("No place returned from autocomplete");
+        dispatch(addToast({
+          type: 'error',
+          message: 'Không thể lấy chi tiết địa điểm. Vui lòng thử lại.'
+        }));
+        setHasError(true);
+        return;
+      }
+      
+      // Kiểm tra dữ liệu địa điểm
+      if (!place.geometry) {
+        console.error("Place has no geometry:", place);
+        dispatch(addToast({
+          type: 'error',
+          message: 'Địa điểm không có tọa độ. Vui lòng chọn một địa điểm từ gợi ý.'
+        }));
+        setHasError(true);
+        return;
+      }
+
+      // Kiểm tra chi tiết còn thiếu và tự bổ sung
+      if (!place.name && place.geometry) {
+        place.name = "Địa điểm đã chọn";
+      }
+      
+      // Reset lỗi nếu thành công
+      setHasError(false);
       handlePlaceSelect(place);
       clearSearch();
-      setSuggestionsVisible(false);
+    } catch (error) {
+      console.error("Error in place selection:", error);
+      dispatch(addToast({
+        type: 'error',
+        message: 'Lỗi khi xử lý địa điểm. Vui lòng kiểm tra trình chặn quảng cáo và thử lại.'
+      }));
+      setHasError(true);
     }
   };
 
-  // Xử lý khi chọn từ danh sách gợi ý
-  const handleSuggestionSelect = (suggestion) => {
-    handlePlaceSelect(suggestion);
-    clearSearch();
-    setSuggestionsVisible(false);
+  const handleManualSearch = () => {
+    if (searchText && searchText.trim() !== '') {
+      // Tìm kiếm thủ công khi người dùng nhấn Enter
+      try {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ address: searchText, region: 'vn' }, (results, status) => {
+            if (status === 'OK' && results && results.length > 0) {
+              const place = results[0];
+              handlePlaceSelect(place);
+              clearSearch();
+              setHasError(false);
+            } else {
+              dispatch(addToast({
+                type: 'error',
+                message: 'Không tìm thấy địa điểm. Vui lòng thử lại với từ khóa khác.'
+              }));
+              setHasError(true);
+            }
+          });
+        } else {
+          dispatch(addToast({
+            type: 'error',
+            message: 'Dịch vụ bản đồ chưa sẵn sàng. Vui lòng thử lại sau.'
+          }));
+          setHasError(true);
+        }
+      } catch (error) {
+        console.error("Geocoding error:", error);
+        dispatch(addToast({
+          type: 'error',
+          message: 'Lỗi khi tìm kiếm địa điểm. Vui lòng thử lại.'
+        }));
+        setHasError(true);
+      }
+    }
   };
 
-  // Hiển thị gợi ý khi focus và có dữ liệu
-  useEffect(() => {
-    setSuggestionsVisible(focused && (searchText.length > 0 || recentSearches.length > 0));
-  }, [focused, searchText, recentSearches]);
-
-  // Bắt đầu tìm kiếm bằng giọng nói
   const startVoiceSearch = () => {
-    if (!('webkitSpeechRecognition' in window)) {
-      alert('Trình duyệt của bạn không hỗ trợ tìm kiếm bằng giọng nói.');
-      return;
+    try {
+      // Kiểm tra hỗ trợ trình đọc giọng nói
+      if (typeof window !== 'undefined' && window.webkitSpeechRecognition) {
+        const SpeechRecognition = window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        recognition.continuous = false;
+        recognition.lang = 'vi-VN';
+        
+        recognition.onresult = (event) => {
+          if (event.results && event.results[0]) {
+            const transcript = event.results[0][0].transcript;
+            handleSearchTextChange(transcript);
+          }
+        };
+        
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error:', event.error);
+        };
+        
+        recognition.start();
+      } else {
+        alert('Trình duyệt của bạn không hỗ trợ tìm kiếm bằng giọng nói.');
+      }
+    } catch (error) {
+      console.error('Voice search error:', error);
+      alert('Không thể khởi động tìm kiếm bằng giọng nói.');
     }
+  };
 
-    const recognition = new window.webkitSpeechRecognition();
-    recognition.continuous = false;
-    recognition.lang = 'vi-VN';
-    
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      handleSearchTextChange(transcript);
-    };
-    
-    recognition.start();
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleManualSearch();
+    }
   };
 
   return (
-    <Box sx={{ 
-      position: 'absolute', 
-      top: 20, 
-      left: '50%', 
-      transform: 'translateX(-50%)', 
-      width: { xs: '90%', sm: '70%', md: 500 }, 
-      zIndex: 100,
-      transition: 'width 0.3s ease'
-    }}>
-      <MotionBox
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <SearchPaper 
-          elevation={focused ? 3 : 1}
-          sx={{ 
-            width: '100%',
-            backgroundColor: 'white',
-          }}
-        >
-          <Autocomplete
-            onLoad={onAutocompleteLoad}
-            onPlaceChanged={onPlaceSelect}
-            options={{ 
-              componentRestrictions: { country: 'vn' },
-              types: ['geocode', 'establishment']
-            }}
-          >
-            <StyledTextField
-              fullWidth
-              autoComplete="off"
-              placeholder="Tìm kiếm địa điểm, tòa nhà, địa chỉ..."
-              value={searchText}
-              onChange={(e) => handleSearchTextChange(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setTimeout(() => setFocused(false), 200)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon color="action" />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    {isSearching ? (
-                      <CircularProgress size={20} />
-                    ) : searchText ? (
-                      <IconButton 
-                        edge="end" 
-                        onClick={clearSearch}
-                        size="small"
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    ) : (
-                      <IconButton 
-                        edge="end" 
-                        onClick={startVoiceSearch}
-                        size="small"
-                      >
-                        <MicIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Autocomplete>
-        </SearchPaper>
-        
-        {suggestionsVisible && (
-          <Fade in={suggestionsVisible}>
-            <SuggestionsPaper elevation={3}>
-              {searchText && searchSuggestions.length > 0 && (
-                <>
-                  <Typography variant="subtitle2" color="textSecondary" sx={{ p: 1.5, pb: 0.5 }}>
-                    Gợi ý
-                  </Typography>
-                  <List dense>
-                    {searchSuggestions.map((suggestion, index) => (
-                      <ListItem 
-                        key={`suggestion-${index}`} 
-                        button
-                        onClick={() => handleSuggestionSelect(suggestion)}
-                      >
-                        <ListItemIcon sx={{ minWidth: 40 }}>
-                          <LocationOnIcon color="primary" />
-                        </ListItemIcon>
-                        <ListItemText 
-                          primary={suggestion.name}
-                          secondary={suggestion.address}
-                          primaryTypographyProps={{ 
-                            noWrap: true,
-                            style: { fontWeight: 500 } 
-                          }}
-                          secondaryTypographyProps={{ 
-                            noWrap: true,
-                          }}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                  <Divider />
-                </>
-              )}
-
-              {recentSearches.length > 0 && (
-                <>
-                  <Typography variant="subtitle2" color="textSecondary" sx={{ p: 1.5, pb: 0.5 }}>
-                    Tìm kiếm gần đây
-                  </Typography>
-                  <List dense sx={{ maxHeight: 200, overflow: 'auto' }}>
-                    {recentSearches.slice(0, 5).map((item, index) => (
-                      <ListItem 
-                        key={`recent-${index}`} 
-                        button
-                        onClick={() => handleSuggestionSelect(item)}
-                      >
-                        <ListItemIcon sx={{ minWidth: 40 }}>
-                          <HistoryIcon color="action" />
-                        </ListItemIcon>
-                        <ListItemText 
-                          primary={item.name}
-                          secondary={item.address}
-                          primaryTypographyProps={{ noWrap: true }}
-                          secondaryTypographyProps={{ noWrap: true }}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </>
-              )}
-            </SuggestionsPaper>
-          </Fade>
-        )}
-      </MotionBox>
+    <Box sx={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', width: { xs: 'calc(100% - 32px)', sm: 450 }, maxWidth: "90%", zIndex: 10 }}>
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ width: '100%' }}>
+            {isLoaded && (
+                <Autocomplete
+                    onLoad={onAutocompleteLoad}
+                    onPlaceChanged={onPlaceSelect}
+                    options={{
+                        componentRestrictions: { country: 'vn' },
+                        types: ['establishment', 'geocode'],
+                        fields: ['geometry', 'name', 'formatted_address', 'place_id', 'photos', 'rating', 'user_ratings_total', 'types', 'reviews', 'opening_hours', 'website', 'formatted_phone_number', 'international_phone_number']
+                    }}
+                >
+                    <StyledTextField
+                        fullWidth
+                        autoComplete="off"
+                        placeholder="Tìm kiếm địa điểm..."
+                        value={searchText}
+                        onChange={(e) => handleSearchTextChange(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        error={hasError}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon 
+                                      color="action" 
+                                      style={{cursor: 'pointer'}} 
+                                      onClick={handleManualSearch}
+                                    />
+                                </InputAdornment>
+                            ),
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    {isSearching ? (
+                                        <CircularProgress size={20} sx={{ mr: 1 }} />
+                                    ) : searchText ? (
+                                        <IconButton edge="end" onClick={clearSearch} size="small" sx={{ mr: 0.5 }}>
+                                            <CloseIcon fontSize="small" />
+                                        </IconButton>
+                                    ) : (
+                                        <IconButton edge="end" onClick={startVoiceSearch} size="small" sx={{ mr: 0.5 }}>
+                                            <MicIcon />
+                                        </IconButton>
+                                    )}
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                </Autocomplete>
+            )}
+        </motion.div>
     </Box>
   );
 };

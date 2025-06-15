@@ -1,138 +1,120 @@
-import React, { useState } from 'react';
-import { 
-  Box, 
-  Drawer, 
-  IconButton, 
-  Typography, 
-  Tabs, 
-  Tab, 
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Button,
-  Rating,
-  Chip,
-  Avatar,
-  Slide
-} from '@mui/material';
-import { useDispatch, useSelector } from 'react-redux';
-import { setSidePanelOpen, setSidePanelTab } from '../../store/slices/uiSlice';
-import { styled } from '@mui/material/styles';
-import CloseIcon from '@mui/icons-material/Close';
+import React, { useEffect, useRef } from 'react';
+import { Box, Paper, Tabs, Tab, useMediaQuery, useTheme, IconButton } from '@mui/material';
+import { useSelector, useDispatch } from 'react-redux';
+import InfoIcon from '@mui/icons-material/Info';
 import DirectionsIcon from '@mui/icons-material/Directions';
-import StarIcon from '@mui/icons-material/Star';
-import ShareIcon from '@mui/icons-material/Share';
-import PhoneIcon from '@mui/icons-material/Phone';
-import PublicIcon from '@mui/icons-material/Public';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import BookmarksIcon from '@mui/icons-material/Bookmarks';
+import CloseIcon from '@mui/icons-material/Close';
+import { setSidePanelTab, setSidePanelOpen } from '../../store/slices/uiSlice';
 import PlaceInfo from './PlaceInfo';
 import DirectionsPanel from './DirectionsPanel';
 import SavedLocations from './SavedLocations';
-
-const drawerWidth = {
-  xs: '100%',
-  sm: 360,
-  md: 380
-};
-
-// Component cho header của panel
-const PanelHeader = ({ title, onClose }) => (
-  <Box sx={{ 
-    display: 'flex', 
-    alignItems: 'center', 
-    p: 2, 
-    backgroundColor: 'primary.main', 
-    color: 'white' 
-  }}>
-    <Typography variant="h6" sx={{ flexGrow: 1 }}>
-      {title}
-    </Typography>
-    <IconButton color="inherit" onClick={onClose} edge="end">
-      <CloseIcon />
-    </IconButton>
-  </Box>
-);
+import { motion, AnimatePresence } from 'framer-motion';
 
 const SidePanel = () => {
-  const dispatch = useDispatch();
-  const { sidePanelOpen, sidePanelTab, isMobileView } = useSelector(state => state.ui);
-  const { selectedPlace, directions } = useSelector(state => state.map);
+    const dispatch = useDispatch();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const { isSidePanelOpen, sidePanelTab } = useSelector(state => state.ui);
+    const { selectedPlace, directions } = useSelector(state => state.map);
+    const panelRef = useRef(null);
 
-  const handleClose = () => {
-    dispatch(setSidePanelOpen(false));
-  };
-
-  const handleTabChange = (event, newValue) => {
-    dispatch(setSidePanelTab(newValue));
-  };
-
-  // Xác định tiêu đề cho panel
-  const getPanelTitle = () => {
-    switch (sidePanelTab) {
-      case 'info':
-        return selectedPlace ? selectedPlace.name : 'Thông tin địa điểm';
-      case 'directions':
-        return 'Chỉ đường';
-      case 'saved':
-        return 'Địa điểm đã lưu';
-      default:
-        return 'Maps WebApp';
-    }
-  };
-
-  const handleDrawerTransitionEnd = () => {
-    // Chỉ reset panel khi đóng để tránh hiệu ứng giật
-    if (!sidePanelOpen) {
-      // Logic khi đóng panel hoàn toàn
-    }
-  };
-
-  return (
-    <Drawer
-      anchor={isMobileView ? 'bottom' : 'right'}
-      open={sidePanelOpen}
-      variant="temporary"
-      onClose={handleClose}
-      onTransitionEnd={handleDrawerTransitionEnd}
-      ModalProps={{
-        keepMounted: true, // Tối ưu hóa hiệu suất trên mobile
-      }}
-      PaperProps={{
-        sx: {
-          width: drawerWidth,
-          maxWidth: isMobileView ? '100%' : 450,
-          borderRadius: isMobileView ? '16px 16px 0 0' : 0,
-          maxHeight: isMobileView ? 'calc(100% - 56px)' : '100%',
-          overflow: 'hidden',
+    // Make sure panel opens when place is selected
+    useEffect(() => {
+        if (selectedPlace && !isSidePanelOpen) {
+            console.log("Selected place is present, opening side panel");
+            dispatch(setSidePanelOpen(true));
+            dispatch(setSidePanelTab(0)); // Show info tab for place
         }
-      }}
-    >
-      <PanelHeader 
-        title={getPanelTitle()} 
-        onClose={handleClose} 
-      />
+    }, [selectedPlace, isSidePanelOpen, dispatch]);
 
-      <Tabs 
-        value={sidePanelTab} 
-        onChange={handleTabChange}
-        variant="fullWidth"
-        indicatorColor="primary"
-        textColor="primary"
-      >
-        <Tab label="Thông tin" value="info" disabled={!selectedPlace} />
-        <Tab label="Chỉ đường" value="directions" />
-        <Tab label="Đã lưu" value="saved" />
-      </Tabs>
-      
-      <Box sx={{ overflowY: 'auto', flexGrow: 1 }}>
-        {sidePanelTab === 'info' && <PlaceInfo />}
-        {sidePanelTab === 'directions' && <DirectionsPanel />}
-        {sidePanelTab === 'saved' && <SavedLocations />}
-      </Box>
-    </Drawer>
-  );
+    // Show directions tab when directions are available
+    useEffect(() => {
+        if (directions && sidePanelTab !== 1) {
+            console.log("Directions are available, switching to directions tab");
+            dispatch(setSidePanelTab(1));
+            if (!isSidePanelOpen) {
+                dispatch(setSidePanelOpen(true));
+            }
+        }
+    }, [directions, sidePanelTab, isSidePanelOpen, dispatch]);
+
+    // Force panel to be visible when needed
+    useEffect(() => {
+        if (isSidePanelOpen && panelRef.current) {
+            panelRef.current.style.display = 'flex';
+            panelRef.current.style.visibility = 'visible';
+            panelRef.current.style.opacity = '1';
+        }
+    }, [isSidePanelOpen]);
+
+    // Handle tab change
+    const handleTabChange = (event, newValue) => {
+        dispatch(setSidePanelTab(newValue));
+    };
+
+    // Handle panel close
+    const handleClosePanel = () => {
+        dispatch(setSidePanelOpen(false));
+    };
+
+    if (!isSidePanelOpen) {
+        return null; // Don't render anything if panel is closed
+    }
+
+    return (
+        <div ref={panelRef} className="panel-wrapper">
+            <motion.div
+                key="side-panel"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: isMobile ? '100%' : 350, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="side-panel-container"
+            >
+                <Paper
+                    elevation={4}
+                    sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        borderRadius: 0,
+                    }}
+                >
+                    {/* Header with close button */}
+                    <Box className="side-panel-header">
+                        <Tabs
+                            value={sidePanelTab}
+                            onChange={handleTabChange}
+                            variant="fullWidth"
+                            indicatorColor="primary"
+                            textColor="primary"
+                            sx={{ flexGrow: 1 }}
+                        >
+                            <Tab icon={<InfoIcon />} label="Thông tin" />
+                            <Tab icon={<DirectionsIcon />} label="Chỉ đường" />
+                            <Tab icon={<BookmarksIcon />} label="Đã lưu" />
+                        </Tabs>
+                        <IconButton 
+                            onClick={handleClosePanel}
+                            size="small"
+                            className="close-button"
+                            aria-label="close panel"
+                        >
+                            <CloseIcon fontSize="small" />
+                        </IconButton>
+                    </Box>
+
+                    <Box className="side-panel-content">
+                        {sidePanelTab === 0 && <PlaceInfo />}
+                        {sidePanelTab === 1 && <DirectionsPanel />}
+                        {sidePanelTab === 2 && <SavedLocations />}
+                    </Box>
+                </Paper>
+            </motion.div>
+        </div>
+    );
 };
 
 export default SidePanel; 

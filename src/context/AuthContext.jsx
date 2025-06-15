@@ -15,16 +15,20 @@ export const AuthProvider = ({ children }) => {
         
         if (token) {
             try {
+                console.log('Found token in localStorage, attempting to validate');
                 // Kiểm tra token và tự động đăng nhập
                 axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
                 const decoded = jwtDecode(token);
+                console.log('Decoded token:', decoded);
                 
                 // Nếu token còn hiệu lực, đăng nhập người dùng
                 if (decoded.exp * 1000 > Date.now()) {
+                    console.log('Token is valid, logging in user automatically');
                     const user = { username: decoded.username };
                     dispatch(loginSuccess(user));
                 } else {
                     // Token hết hạn, xóa token
+                    console.log('Token has expired, removing');
                     localStorage.removeItem('token');
                     delete axios.defaults.headers.common['Authorization'];
                 }
@@ -33,6 +37,8 @@ export const AuthProvider = ({ children }) => {
                 localStorage.removeItem('token');
                 delete axios.defaults.headers.common['Authorization'];
             }
+        } else {
+            console.log('No token found in localStorage');
         }
     }, [dispatch]);
     
